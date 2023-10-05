@@ -1,0 +1,34 @@
+From 1465c50aade33c1712cddae2af3f6ef22e15c65c Mon Sep 17 00:00:00 2001
+From: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Date: Mon, 17 Jul 2023 01:07:29 +0000
+Subject: [PATCH] ld: emulparams: elf32lriscv-defs.sh: Adjust TEXT_START_ADDR
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+With applications compiled with a static flag the virtual address for the
+applications may fall within H’0_0003_0000 - H’0_0004_FFFF where the ILM
+and DLM blocks of the AX45MP exist.
+The MMU won't trigger page faults when the virtual address falls in the
+range of AX45MP local memory. So to make sure statically compiled
+applications run successfully, adjust the TEXT_START_ADDR to 0x50000.
+
+Upstream-Status: Inappropriate [embedded specific (https://sourceware.org/pipermail/binutils/2022-November/124815.html)]
+Signed-off-by: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+---
+ ld/emulparams/elf32lriscv-defs.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ld/emulparams/elf32lriscv-defs.sh b/ld/emulparams/elf32lriscv-defs.sh
+index b823ceda..021298b7 100644
+--- a/ld/emulparams/elf32lriscv-defs.sh
++++ b/ld/emulparams/elf32lriscv-defs.sh
+@@ -27,7 +27,7 @@ case "$target" in
+ esac
+ 
+ IREL_IN_PLT=
+-TEXT_START_ADDR=0x10000
++TEXT_START_ADDR=0x50000
+ MAXPAGESIZE="CONSTANT (MAXPAGESIZE)"
+ COMMONPAGESIZE="CONSTANT (COMMONPAGESIZE)"
+ 
