@@ -1,0 +1,62 @@
+image: gitlab.renesas.solutions:5050/spl2/continuous-integration/dockerfiles:ubuntu-22.04-latest
+
+stages:
+  - build
+
+variables:
+  GIT_STRATEGY: none
+  IMAGES_DIR: build/tmp/deploy/images/${MACHINE}
+  BUILD_DIR: ${CI_PROJECT_DIR}/build
+  OUTPUT_DIR: ${CI_PROJECT_DIR}/output
+  YOCTO_DL_DIR: downloads
+  YOCTO_SSTATE_DIR: sstate_cache
+
+.prepare-bsp:
+  variables:
+  before_script:
+    - sudo apt-get update && sudo apt-get -y install snapd curl file
+    - sudo apt-get install ca-certificates curl gnupg
+    - printenv
+    - rm -rf ${OUTPUT_DIR} ${BUILD_DIR}
+    - mkdir -p ${OUTPUT_DIR} ${BUILD_DIR}
+    - cd ${BUILD_DIR}
+    - git clone https://github.com/siemens/kas.git kas-repo
+    - cd kas-repo && sudo pip3 install . && cd -
+    - cd ${BUILD_DIR}
+    - git clone -b ${CI_COMMIT_REF_NAME} --single-branch git@gitlab.renesas.solutions:prabhakarlad/meta-riscv.git
+
+.build-bsp:
+  stage: build
+  tags:
+    - yocto
+  script:
+    - cd ${BUILD_DIR}
+    - SHELL=/bin/bash kas build ./meta-riscv/smarc-rzfive.yml
+    - SHELL=/bin/bash kas build ./meta-riscv/smarc-rzfive.yml -c populate_sdk
+    - ls -l ${IMAGES_DIR}/
+    - cp ${IMAGES_DIR}/*.wic.gz ${OUTPUT_DIR} || true
+    - cp ${IMAGES_DIR}/*rootfs.tar.bz2 ${OUTPUT_DIR} || true
+    - cp ${IMAGES_DIR}/*.mot ${OUTPUT_DIR} || true
+    - cp ${IMAGES_DIR}/*.srec ${OUTPUT_DIR} || true
+    - cp ${IMAGES_DIR}/*.dtb ${OUTPUT_DIR} || true
+    - cp ${IMAGES_DIR}/Image ${OUTPUT_DIR} || true
+  artifacts:
+    name: "${CI_JOB_NAME}-${CI_JOB_ID}"
+    expire_in: 1 month
+    paths:
+      - ${OUTPUT_DIR}
+      - ${BUILD_DIR}/build/conf/
+      - ${BUILD_DIR}/build/tmp/deploy/images/
+      - ${BUILD_DIR}/build/tmp/deploy/sdk/
+  cache:
+    - key: "downloads"
+      paths:
+        - ./build/build/${YOCTO_DL_DIR}
+    - key: "sstate-cache-${MACHINE}"
+      paths:
+        - ./build/build/${YOCTO_SSTATE_DIR}
+
+smarc-rzfive:
+  extends: [.prepare-bsp, .build-bsp]
+  variables:
+    MACHINE: smarc-rzfive
